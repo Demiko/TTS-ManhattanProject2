@@ -1,0 +1,83 @@
+setupDone = false
+playerNumberDone = false
+buildingsMarketGUID = "b14084"
+techBoardGUID = "5e27bf"
+bomberDeckGUID = "aa8f1f"
+buildings = {"d7a5f6","2a5f39", "4e14aa", "e4dc61", "0a29ec", "989a15"}
+tokens = {"1d42b8", "ac8951", "735754", "505154", "505154"}
+
+function onLoad(saved_data)
+  local data = nil
+  if saved_data != nil then
+    data = JSON.decode(saved_data)
+  end
+  if data == nil then
+    UI.setAttribute("Setup", "active", true)
+  elseif data.playerNumberDone==nil or not data.playerNumberDone then
+    UI.setAttribute("Setup", "active", true)
+  elseif data.setupDone==nil or not data.setupDone then
+    playerNumberDone=true
+    UI.setAttribute("GameLength", "active", true)
+  end
+
+  for i=1,#buildings do
+    buildings[i] = getObjectFromGUID(buildings[i])
+  end
+end
+
+function onSave()
+  local save = {
+    setupDone=setupDone,
+    playerNumberDone=playerNumberDone
+  }
+  return JSON.encode(save)
+end
+
+-- UI Stuff
+
+function StartSetup(player, value, id)
+  UI.setAttribute("Setup", "active", false)
+  UI.setAttribute("PlayerCount", "active", true)
+end
+
+function OnPlayerCountClick(player, value, id)
+  UI.setAttribute("PlayerCount", "active", false)
+  local count = tonumber(id)
+  SetupBuildings(count)
+  SetupBombers(count)
+  UI.setAttribute("GameLength", "active", true)
+  playerNumberDone = true
+end
+
+function OnGameLengthClick(player, value, id)
+  UI.setAttribute("GameLength", "active", false)
+  SetupGameLength(tonumber(id))
+  setupDone = true
+end
+
+function SetupBuildings(playerCount)
+  local function process()
+    for i=1,(5-playerCount)*2 do
+      for _,deck in ipairs(buildings) do
+        deck.takeObject({smooth=false}).destruct()
+      end
+    end
+
+    for i=2,#buildings do
+      buildings[1].putObject(buildings[i])
+    end
+    getObjectFromGUID(buildingsMarketGUID).call("useDeck", buildings[1])
+  end
+  coroutine.resume(coroutine.create(process))
+end
+
+function SetupBombers(playerCount)
+  local bombers = getObjectFromGUID(bomberDeckGUID)
+  for i=1,(5-playerCount)*3 do
+    bombers.takeObject({smooth=false}).destruct()
+  end
+end
+
+function SetupGameLength(length)
+  getObjectFromGUID(techBoardGUID).call("setup", length)
+end
